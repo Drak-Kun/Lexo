@@ -7,8 +7,20 @@
     "userInterfaceStyle": "automatic",
     "backgroundColor": "#0B0912",
     "scheme": "lexo",
-    "plugins": ["expo-router"],
-    "ios": { "bundleIdentifier": "com.lexo.app" },
-    "android": { "package": "com.lexo.app" }
+    "plugins": [
+      "expo-router"
+    ],
+    "ios": {
+      "bundleIdentifier": "com.lexo.app"
+    },
+    "android": {
+      "package": "com.lexo.app"
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "fd22cbd3-23f1-4032-8a99-c890f0492ee5"
+      }
+    }
   }
 }
