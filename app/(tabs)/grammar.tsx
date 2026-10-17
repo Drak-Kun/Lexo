@@ -1,25 +1,36 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
 import {
   View,
   Text,
   StyleSheet,
   FlatList,
-  TouchableOpacity,
   TextInput,
   ActivityIndicator,
   ScrollView,
 } from "react-native";
 import { useRouter } from "expo-router";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useApp } from "../../context/AppContext";
 import { colors, spacing, borderRadius, typography } from "../../constants/theme";
+import { NotebookText, Plus, Search, X } from "lucide-react-native";
+import {
+  FocusMotion,
+  MotionEntrance,
+  MotionTouchableOpacity as TouchableOpacity,
+} from "../../components/Motion";
 
 export default function GrammarScreen() {
-  const { grammar, isDark, isLoading } = useApp();
+  const { grammar, activeLanguage, isLoading } = useApp();
   const router = useRouter();
-  const theme = isDark ? colors.dark : colors.light;
+  const theme = colors.dark;
 
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const animatedGrammarIds = useRef(new Set<string>());
+
+  useEffect(() => {
+    setSelectedTags([]);
+  }, [activeLanguage?.id]);
 
   // Get all unique tags
   const allTags = useMemo(() => {
@@ -62,25 +73,23 @@ export default function GrammarScreen() {
 
   if (isLoading) {
     return (
-      <View style={[styles.container, { backgroundColor: theme.background }]}>
+      <SafeAreaView edges={["top"]} style={[styles.container, styles.loading, { backgroundColor: theme.background }]}>
         <ActivityIndicator size="large" color={theme.primary} />
-      </View>
+      </SafeAreaView>
     );
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.background }]}>
+    <FocusMotion style={styles.container}>
+    <SafeAreaView edges={["top"]} style={[styles.container, { backgroundColor: theme.background }]}>
       {/* Header */}
       <View style={styles.header}>
         <Text style={[styles.title, { color: theme.text }]}>Grammar</Text>
-        <TouchableOpacity onPress={() => router.push("/add-grammar")}>
-          <Text style={[styles.addButton, { color: theme.primary }]}>+ Add</Text>
-        </TouchableOpacity>
       </View>
 
       {/* Search */}
       <View style={[styles.searchContainer, { backgroundColor: theme.card, borderColor: theme.border }]}>
-        <Text style={styles.searchIcon}>🔍</Text>
+        <Search size={18} color={theme.textSecondary} strokeWidth={2} style={styles.searchIcon} />
         <TextInput
           style={[styles.searchInput, { color: theme.text }]}
           placeholder="Search grammar..."
@@ -89,20 +98,22 @@ export default function GrammarScreen() {
           onChangeText={setSearchQuery}
         />
         {searchQuery.length > 0 && (
-          <TouchableOpacity onPress={() => setSearchQuery("")}>
-            <Text style={[styles.clearButton, { color: theme.textSecondary }]}>✕</Text>
+          <TouchableOpacity style={styles.clearButton} onPress={() => setSearchQuery("")}>
+            <X size={18} color={theme.textSecondary} strokeWidth={2} />
           </TouchableOpacity>
         )}
       </View>
 
       {/* Tags */}
       {allTags.length > 0 && (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={styles.tagsContainer}
-          contentContainerStyle={styles.tagsContent}
-        >
+        <View style={styles.tagsRow}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.tagsScroll}
+            contentContainerStyle={styles.tagsContent}
+            contentInsetAdjustmentBehavior="never"
+          >
           {allTags.map((tag) => {
             const isSelected = selectedTags.includes(tag);
             return (
@@ -120,7 +131,7 @@ export default function GrammarScreen() {
                 <Text
                   style={[
                     styles.tagText,
-                    { color: isSelected ? "#FFFFFF" : theme.text },
+                    { color: isSelected ? theme.onPrimary : theme.text },
                   ]}
                 >
                   {tag}
@@ -128,13 +139,14 @@ export default function GrammarScreen() {
               </TouchableOpacity>
             );
           })}
-        </ScrollView>
+          </ScrollView>
+        </View>
       )}
 
       {/* Grammar List */}
       {filteredGrammar.length === 0 ? (
-        <View style={styles.emptyState}>
-          <Text style={[styles.emptyIcon, { color: theme.textSecondary }]}>📝</Text>
+        <MotionEntrance style={styles.emptyState}>
+          <NotebookText size={56} color={theme.textSecondary} strokeWidth={1.75} style={styles.emptyIcon} />
           <Text style={[styles.emptyTitle, { color: theme.text }]}>
             {grammar.length === 0 ? "No grammar points yet" : "No grammar found"}
           </Text>
@@ -148,20 +160,28 @@ export default function GrammarScreen() {
               style={[styles.emptyButton, { backgroundColor: theme.primary }]}
               onPress={() => router.push("/add-grammar")}
             >
-              <Text style={styles.emptyButtonText}>+ Add Grammar</Text>
+              <View style={styles.emptyButtonContent}>
+                <Plus size={18} color={theme.onPrimary} strokeWidth={2.5} />
+                <Text style={styles.emptyButtonText}>Add Grammar</Text>
+              </View>
             </TouchableOpacity>
           )}
-        </View>
+        </MotionEntrance>
       ) : (
         <FlatList
           data={filteredGrammar}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}
-          renderItem={({ item }) => (
-            <TouchableOpacity
-              style={[styles.grammarCard, { backgroundColor: theme.card, borderColor: theme.border }]}
-              onPress={() => router.push(`/grammar-detail?id=${item.id}`)}
-            >
+          contentInsetAdjustmentBehavior="never"
+          renderItem={({ item, index }) => {
+            const animateEntrance = !animatedGrammarIds.current.has(item.id);
+            animatedGrammarIds.current.add(item.id);
+            return (
+            <MotionEntrance animate={animateEntrance} delay={Math.min(index, 4) * 35}>
+              <TouchableOpacity
+                style={[styles.grammarCard, { backgroundColor: theme.card, borderColor: theme.border }]}
+                onPress={() => router.push(`/grammar-detail?id=${item.id}`)}
+              >
               <Text style={[styles.grammarPoint, { color: theme.text }]}>
                 {item.grammarPoint}
               </Text>
@@ -190,12 +210,22 @@ export default function GrammarScreen() {
                 </View>
               )}
 
-              <Text style={[styles.arrow, { color: theme.textSecondary }]}>→</Text>
-            </TouchableOpacity>
-          )}
+              </TouchableOpacity>
+            </MotionEntrance>
+            );
+          }}
         />
       )}
-    </View>
+      <TouchableOpacity
+        style={[styles.addFab, { backgroundColor: theme.primary }]}
+        onPress={() => router.push("/add-grammar")}
+        accessibilityRole="button"
+        accessibilityLabel="Add grammar"
+      >
+        <Plus size={28} color={theme.onPrimary} strokeWidth={2.5} />
+      </TouchableOpacity>
+    </SafeAreaView>
+    </FocusMotion>
   );
 }
 
@@ -203,78 +233,93 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  loading: {
+    justifyContent: "center",
+    alignItems: "center",
+  },
   header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
     paddingHorizontal: spacing.lg,
-    paddingTop: 60,
-    paddingBottom: spacing.md,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.sm,
   },
   title: {
     ...typography.title,
-  },
-  addButton: {
-    fontSize: 18,
-    fontWeight: "600",
+    alignSelf: "flex-start",
   },
   searchContainer: {
     flexDirection: "row",
     alignItems: "center",
     marginHorizontal: spacing.lg,
-    marginBottom: spacing.md,
+    marginBottom: 12,
     paddingHorizontal: spacing.md,
-    borderRadius: borderRadius.md,
+    borderRadius: 999,
     borderWidth: 1,
+    minHeight: 48,
   },
   searchIcon: {
-    fontSize: 18,
     marginRight: spacing.sm,
   },
   searchInput: {
     flex: 1,
-    paddingVertical: spacing.md,
+    paddingVertical: spacing.sm,
     ...typography.body,
   },
   clearButton: {
-    fontSize: 18,
     padding: spacing.sm,
   },
-  tagsContainer: {
-    marginBottom: spacing.md,
+  tagsRow: {
+    height: 52,
+    marginBottom: 20,
+    overflow: "visible",
+    justifyContent: "center",
+  },
+  tagsScroll: {
+    height: 52,
   },
   tagsContent: {
     paddingHorizontal: spacing.lg,
     gap: spacing.sm,
+    alignItems: "center",
+    height: 52,
   },
   tag: {
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: borderRadius.lg,
+    height: 36,
+    minHeight: 36,
+    paddingVertical: 0,
+    justifyContent: "center",
+    alignItems: "center",
+    borderRadius: 999,
     borderWidth: 1,
   },
   tagText: {
-    ...typography.caption,
+    fontSize: 13,
+    lineHeight: 18,
     fontWeight: "500",
+    includeFontPadding: false,
+    textAlignVertical: "center",
   },
   listContent: {
-    padding: spacing.lg,
+    paddingHorizontal: spacing.lg,
+    paddingTop: 0,
+    paddingBottom: 112,
   },
   grammarCard: {
-    padding: spacing.md,
+    padding: 12,
     borderRadius: borderRadius.md,
     borderWidth: 1,
-    marginBottom: spacing.md,
-    position: "relative",
+    marginBottom: spacing.sm,
   },
   grammarPoint: {
     fontSize: 20,
     fontWeight: "600",
     marginBottom: spacing.xs,
+    lineHeight: 26,
   },
   meaning: {
-    ...typography.body,
-    marginBottom: spacing.sm,
+    fontSize: 14,
+    lineHeight: 20,
   },
   grammarTags: {
     flexDirection: "row",
@@ -284,19 +329,29 @@ const styles = StyleSheet.create({
   },
   grammarTag: {
     paddingHorizontal: spacing.sm,
-    paddingVertical: 4,
-    borderRadius: 6,
+    height: 24,
+    justifyContent: "center",
+    borderRadius: borderRadius.sm,
     borderWidth: 1,
+    maxWidth: "100%",
   },
   grammarTagText: {
-    fontSize: 12,
+    fontSize: 11,
+    lineHeight: 15,
     fontWeight: "500",
+    flexShrink: 1,
   },
-  arrow: {
+  addFab: {
     position: "absolute",
-    right: spacing.md,
-    top: spacing.md,
-    fontSize: 20,
+    right: spacing.lg,
+    bottom: spacing.md,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    alignItems: "center",
+    justifyContent: "center",
+    elevation: 5,
+    zIndex: 1,
   },
   emptyState: {
     flex: 1,
@@ -305,7 +360,6 @@ const styles = StyleSheet.create({
     padding: spacing.xl,
   },
   emptyIcon: {
-    fontSize: 64,
     marginBottom: spacing.md,
   },
   emptyTitle: {
@@ -320,11 +374,17 @@ const styles = StyleSheet.create({
   emptyButton: {
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
-    borderRadius: borderRadius.lg,
+    borderRadius: 999,
   },
   emptyButtonText: {
-    color: "#FFFFFF",
+    color: colors.dark.onPrimary,
     fontSize: 16,
     fontWeight: "600",
+  },
+  emptyButtonContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: spacing.sm,
   },
 });

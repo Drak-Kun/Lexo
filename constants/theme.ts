@@ -1,4 +1,3 @@
-// Premium color palette
 export const colors = {
   light: {
     background: "#FFFFFF",
@@ -16,19 +15,28 @@ export const colors = {
     },
   },
   dark: {
-    background: "#000000",
-    card: "#1A1A1A",
-    border: "#2D2D2D",
-    text: "#FFFFFF",
-    textSecondary: "#9CA3AF",
-    primary: "#B98CFF",
+    background: "#0B0912",
+    card: "#15111F",
+    elevated: "#1D172B",
+    glassBorder: "rgba(167, 139, 250, 0.22)",
+    glassDropdownTint: "rgba(29, 23, 43, 0.62)",
+    border: "#30243F",
+    text: "#F5F3FA",
+    textSecondary: "#AAA3B8",
+    primary: "#8B5CF6",
     accent: {
-      purple: "#B98CFF",
+      purple: "#A78BFA",
       cyan: "#55CFFF",
       green: "#39D99A",
       red: "#FF6B6B",
       yellow: "#F4C95D",
     },
+    onPrimary: "#FFFFFF",
+    tagSurface: "#211B2D",
+    tagBorder: "#403451",
+    accentSurface: "#29213A",
+    divider: "#30243F",
+    progressTrack: "#211B2D",
   },
 };
 

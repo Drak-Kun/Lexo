@@ -5,22 +5,38 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
+  TextInput,
   Alert,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useApp } from "../context/AppContext";
 import { colors, spacing, borderRadius, typography } from "../constants/theme";
 import { ContentType } from "../types";
-import { getAllTags, getAvailableQuestionCount } from "../utils/quiz";
+import {
+  ArrowLeft,
+  ArrowRight,
+  BookOpen,
+  ChartNoAxesColumnIncreasing,
+  Layers,
+  NotebookText,
+} from "lucide-react-native";
+import {
+  getAllTags,
+  getAvailableQuestionCount,
+  getQuestionCountValidationError,
+} from "../utils/quiz";
 
 export default function QuizSetupScreen() {
-  const { words, grammar, isDark } = useApp();
+  const { words, grammar } = useApp();
   const router = useRouter();
-  const theme = isDark ? colors.dark : colors.light;
+  const theme = colors.dark;
 
   const [contentType, setContentType] = useState<ContentType>("words");
   const [selectedTags, setSelectedTags] = useState<string[]>(["All Tags"]);
   const [questionCount, setQuestionCount] = useState(10);
+  const [isCustomCount, setIsCustomCount] = useState(false);
+  const [customCount, setCustomCount] = useState("");
 
   const allTags = useMemo(() => getAllTags(words, grammar), [words, grammar]);
 
@@ -45,112 +61,138 @@ export default function QuizSetupScreen() {
     }
   };
 
-  const questionOptions = [5, 10, 20, availableCounts.total].filter(
-    (n, i, arr) => n <= availableCounts.total && arr.indexOf(n) === i
-  );
+  const customCountError = !isCustomCount
+    ? null
+    : getQuestionCountValidationError(customCount);
+  const requestedQuestionCount = isCustomCount
+    ? Number(customCount)
+    : questionCount;
+  const canStartQuiz = availableCounts.total > 0 && customCountError === null;
+
+  const contentTypes = [
+    { value: "words" as const, label: "Words", Icon: BookOpen },
+    { value: "grammar" as const, label: "Grammar", Icon: NotebookText },
+    { value: "mixed" as const, label: "Mixed", Icon: Layers },
+  ];
+  const availableLabel =
+    contentType === "words"
+      ? "WORDS AVAILABLE"
+      : contentType === "grammar"
+        ? "GRAMMAR POINTS AVAILABLE"
+        : "QUESTIONS AVAILABLE";
 
   const handleStartQuiz = () => {
     if (availableCounts.total === 0) {
-      Alert.alert("No Content", "Please add some words or grammar points first.");
+      Alert.alert("No Questions", "Add eligible content or choose different tags.");
       return;
     }
 
-    const actualQuestionCount = Math.min(questionCount, availableCounts.total);
+    if (customCountError !== null) return;
 
     router.push({
       pathname: "/quiz",
       params: {
         contentType,
         tags: selectedTags.join(","),
-        questionCount: actualQuestionCount.toString(),
+        questionCount: requestedQuestionCount.toString(),
       },
     });
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.background }]}>
-      {/* Header */}
+    <SafeAreaView
+      edges={["top", "bottom"]}
+      style={[styles.container, { backgroundColor: theme.background }]}
+    >
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()}>
-          <Text style={[styles.backButton, { color: theme.text }]}>← Back</Text>
+        <TouchableOpacity
+          onPress={() => router.back()}
+          style={styles.headerSide}
+          accessibilityRole="button"
+          accessibilityLabel="Back"
+        >
+          <ArrowLeft size={18} color={theme.text} strokeWidth={2} />
+          <Text style={[styles.backButton, { color: theme.text }]}>Back</Text>
         </TouchableOpacity>
-        <Text style={[styles.title, { color: theme.text }]}>Quiz Setup</Text>
-        <View style={{ width: 60 }} />
+        <View style={styles.headerCenter} pointerEvents="none">
+          <Text
+            style={[styles.title, { color: theme.text }]}
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.85}
+          >
+            Quiz Setup
+          </Text>
+        </View>
+        <View style={[styles.headerSide, styles.headerRight]} />
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        {/* Step 1: Content Type */}
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+      >
         <View style={styles.section}>
-          <Text style={[styles.stepNumber, { color: theme.textSecondary }]}>Step 1</Text>
-          <Text style={[styles.sectionTitle, { color: theme.text }]}>Choose Content Type</Text>
+          <View style={styles.stepLabel}>
+            <View style={[styles.stepBadge, { borderColor: theme.primary }]}>
+              <Text style={[styles.stepNumber, { color: theme.primary }]}>01</Text>
+            </View>
+            <Text style={[styles.stepName, { color: theme.primary }]}>CONTENT</Text>
+          </View>
+          <Text style={[styles.sectionTitle, { color: theme.text }]}>
+            Choose Content Type
+          </Text>
+          <Text style={[styles.sectionSubtitle, { color: theme.textSecondary }]}>
+            What do you want to be quizzed on?
+          </Text>
 
           <View style={styles.optionsRow}>
-            <TouchableOpacity
-              style={[
-                styles.option,
-                {
-                  backgroundColor: contentType === "words" ? theme.primary : theme.card,
-                  borderColor: contentType === "words" ? theme.primary : theme.border,
-                },
-              ]}
-              onPress={() => setContentType("words")}
-            >
-              <Text
-                style={[
-                  styles.optionText,
-                  { color: contentType === "words" ? "#FFFFFF" : theme.text },
-                ]}
-              >
-                Words
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[
-                styles.option,
-                {
-                  backgroundColor: contentType === "grammar" ? theme.primary : theme.card,
-                  borderColor: contentType === "grammar" ? theme.primary : theme.border,
-                },
-              ]}
-              onPress={() => setContentType("grammar")}
-            >
-              <Text
-                style={[
-                  styles.optionText,
-                  { color: contentType === "grammar" ? "#FFFFFF" : theme.text },
-                ]}
-              >
-                Grammar
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[
-                styles.option,
-                {
-                  backgroundColor: contentType === "mixed" ? theme.primary : theme.card,
-                  borderColor: contentType === "mixed" ? theme.primary : theme.border,
-                },
-              ]}
-              onPress={() => setContentType("mixed")}
-            >
-              <Text
-                style={[
-                  styles.optionText,
-                  { color: contentType === "mixed" ? "#FFFFFF" : theme.text },
-                ]}
-              >
-                Mixed
-              </Text>
-            </TouchableOpacity>
+            {contentTypes.map(({ value, label, Icon }) => {
+              const isSelected = contentType === value;
+              return (
+                <TouchableOpacity
+                  key={value}
+                  style={[
+                    styles.option,
+                    {
+                      backgroundColor: isSelected ? theme.accentSurface : theme.card,
+                      borderColor: isSelected ? theme.primary : theme.border,
+                    },
+                  ]}
+                  onPress={() => setContentType(value)}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: isSelected }}
+                >
+                  <Icon
+                    size={22}
+                    color={isSelected ? theme.primary : theme.textSecondary}
+                    strokeWidth={1.8}
+                  />
+                  <Text
+                    style={[
+                      styles.optionText,
+                      { color: isSelected ? theme.primary : theme.text },
+                    ]}
+                    numberOfLines={1}
+                  >
+                    {label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
           </View>
         </View>
 
-        {/* Step 2: Tags */}
         <View style={styles.section}>
-          <Text style={[styles.stepNumber, { color: theme.textSecondary }]}>Step 2</Text>
+          <View style={styles.stepLabel}>
+            <View style={[styles.stepBadge, { borderColor: theme.primary }]}>
+              <Text style={[styles.stepNumber, { color: theme.primary }]}>02</Text>
+            </View>
+            <Text style={[styles.stepName, { color: theme.primary }]}>TAGS</Text>
+          </View>
           <Text style={[styles.sectionTitle, { color: theme.text }]}>Choose Tags</Text>
+          <Text style={[styles.sectionSubtitle, { color: theme.textSecondary }]}>
+            Select the topics you want to include.
+          </Text>
 
           <View style={styles.tagsContainer}>
             <TouchableOpacity
@@ -204,83 +246,139 @@ export default function QuizSetupScreen() {
             })}
           </View>
 
-          {/* Available Count */}
-          <View style={[styles.availableCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
-            {contentType === "words" && (
-              <Text style={[styles.availableText, { color: theme.text }]}>
-                {availableCounts.words} words available
+          <View
+            style={[
+              styles.availableCard,
+              { backgroundColor: theme.card, borderColor: theme.border },
+            ]}
+          >
+            <ChartNoAxesColumnIncreasing
+              size={20}
+              color={theme.primary}
+              strokeWidth={1.8}
+            />
+            <View style={[styles.availableDivider, { backgroundColor: theme.border }]} />
+            <View style={styles.availableInfo}>
+              <Text style={[styles.availableCount, { color: theme.primary }]}>
+                {availableCounts.total}
               </Text>
-            )}
-            {contentType === "grammar" && (
-              <Text style={[styles.availableText, { color: theme.text }]}>
-                {availableCounts.grammar} grammar points available
+              <Text style={[styles.availableText, { color: theme.textSecondary }]}>
+                {availableLabel}
               </Text>
-            )}
-            {contentType === "mixed" && (
-              <View>
-                <Text style={[styles.availableText, { color: theme.text }]}>
-                  {availableCounts.words} words available
-                </Text>
-                <Text style={[styles.availableText, { color: theme.text }]}>
-                  {availableCounts.grammar} grammar points available
-                </Text>
-              </View>
-            )}
+            </View>
           </View>
+          {availableCounts.total === 0 && (
+            <Text style={[styles.emptyAvailableText, { color: theme.textSecondary }]}>
+              No eligible questions. Add content or choose different tags.
+            </Text>
+          )}
         </View>
 
-        {/* Step 3: Question Count */}
-        <View style={styles.section}>
-          <Text style={[styles.stepNumber, { color: theme.textSecondary }]}>Step 3</Text>
+        <View style={[styles.section, styles.lastSection]}>
+          <View style={styles.stepLabel}>
+            <View style={[styles.stepBadge, { borderColor: theme.primary }]}>
+              <Text style={[styles.stepNumber, { color: theme.primary }]}>03</Text>
+            </View>
+            <Text style={[styles.stepName, { color: theme.primary }]}>QUESTIONS</Text>
+          </View>
           <Text style={[styles.sectionTitle, { color: theme.text }]}>
             Choose Number of Questions
           </Text>
+          <Text style={[styles.sectionSubtitle, { color: theme.textSecondary }]}>
+            How many questions do you want in this quiz?
+          </Text>
 
           <View style={styles.optionsRow}>
-            {questionOptions.map((count) => {
+            {[5, 10, 20].map((count) => {
               const isSelected = questionCount === count;
-              const label = count === availableCounts.total ? "All" : count.toString();
               return (
                 <TouchableOpacity
                   key={count}
                   style={[
                     styles.countOption,
                     {
-                      backgroundColor: isSelected ? theme.primary : theme.card,
+                      backgroundColor: isSelected ? theme.accentSurface : theme.card,
                       borderColor: isSelected ? theme.primary : theme.border,
                     },
                   ]}
-                  onPress={() => setQuestionCount(count)}
+                  onPress={() => {
+                    setQuestionCount(count);
+                    setIsCustomCount(false);
+                  }}
                 >
                   <Text
                     style={[
                       styles.countOptionText,
-                      { color: isSelected ? "#FFFFFF" : theme.text },
+                      { color: isSelected ? theme.primary : theme.text },
                     ]}
                   >
-                    {label}
+                    {count}
                   </Text>
                 </TouchableOpacity>
               );
             })}
+            <TouchableOpacity
+              style={[
+                styles.countOption,
+                {
+                  backgroundColor: isCustomCount ? theme.accentSurface : theme.card,
+                  borderColor: isCustomCount ? theme.primary : theme.border,
+                },
+              ]}
+              onPress={() => setIsCustomCount(true)}
+            >
+              <Text
+                style={[
+                  styles.customCountOptionText,
+                  { color: isCustomCount ? theme.primary : theme.text },
+                ]}
+              >
+                Custom
+              </Text>
+            </TouchableOpacity>
           </View>
+          {isCustomCount && (
+            <View>
+              <TextInput
+                style={[
+                  styles.customCountInput,
+                  { backgroundColor: theme.card, borderColor: customCountError ? theme.accent.red : theme.border, color: theme.text },
+                ]}
+                value={customCount}
+                onChangeText={setCustomCount}
+                keyboardType="number-pad"
+                placeholder="Enter number of questions"
+                placeholderTextColor={theme.textSecondary}
+                accessibilityLabel="Custom question count"
+                maxLength={6}
+              />
+              {customCountError !== null && (
+                <Text style={[styles.validationText, { color: theme.accent.red }]}>
+                  {customCountError}
+                </Text>
+              )}
+            </View>
+          )}
         </View>
 
-        {/* Start Quiz Button */}
         <TouchableOpacity
           style={[
             styles.startButton,
             {
-              backgroundColor: availableCounts.total > 0 ? theme.primary : theme.border,
+              backgroundColor: canStartQuiz ? theme.primary : theme.border,
             },
           ]}
           onPress={handleStartQuiz}
-          disabled={availableCounts.total === 0}
+          disabled={!canStartQuiz}
+          accessibilityRole="button"
         >
-          <Text style={styles.startButtonText}>Start Quiz</Text>
+          <Text style={[styles.startButtonText, { color: theme.onPrimary }]}>
+            Start Quiz
+          </Text>
+          <ArrowRight size={20} color={theme.onPrimary} strokeWidth={2} />
         </TouchableOpacity>
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -290,94 +388,203 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: spacing.lg,
-    paddingTop: 60,
-    paddingBottom: spacing.md,
+    paddingHorizontal: spacing.sm,
+    paddingTop: spacing.xs,
+    paddingBottom: spacing.sm,
+  },
+  headerSide: {
+    flex: 1,
+    minWidth: 0,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs,
+    minHeight: 44,
+  },
+  headerCenter: {
+    flex: 1,
+    minWidth: 0,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  headerRight: {
+    justifyContent: "flex-end",
   },
   backButton: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: "500",
-    width: 60,
   },
   title: {
-    ...typography.title,
+    ...typography.heading,
+    textAlign: "center",
+    flexShrink: 1,
   },
   scrollContent: {
-    padding: spacing.lg,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.xs,
+    paddingBottom: spacing.lg,
   },
   section: {
-    marginBottom: spacing.xl,
+    marginBottom: spacing.lg,
+  },
+  lastSection: {
+    marginBottom: spacing.md,
+  },
+  stepLabel: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    marginBottom: spacing.sm,
+  },
+  stepBadge: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
   },
   stepNumber: {
-    ...typography.caption,
-    textTransform: "uppercase",
-    marginBottom: spacing.xs,
+    fontSize: 11,
+    fontWeight: "700",
+    includeFontPadding: false,
+  },
+  stepName: {
+    fontSize: 12,
+    fontWeight: "700",
+    letterSpacing: 1.2,
   },
   sectionTitle: {
     ...typography.heading,
+    marginBottom: spacing.xs,
+  },
+  sectionSubtitle: {
+    ...typography.caption,
     marginBottom: spacing.md,
   },
   optionsRow: {
     flexDirection: "row",
-    gap: spacing.md,
+    gap: spacing.sm,
   },
   option: {
     flex: 1,
-    padding: spacing.md,
-    borderRadius: borderRadius.md,
+    minWidth: 0,
+    minHeight: 104,
+    paddingHorizontal: spacing.xs,
+    paddingVertical: spacing.md,
+    borderRadius: borderRadius.lg,
     borderWidth: 1,
+    justifyContent: "center",
     alignItems: "center",
+    gap: spacing.sm,
   },
   optionText: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: "600",
+    includeFontPadding: false,
+    textAlign: "center",
   },
   tagsContainer: {
     flexDirection: "row",
     flexWrap: "wrap",
     gap: spacing.sm,
+    marginBottom: spacing.md,
   },
   tag: {
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: borderRadius.lg,
+    height: 36,
+    minHeight: 36,
+    borderRadius: 999,
     borderWidth: 1,
+    justifyContent: "center",
+    alignItems: "center",
   },
   tagText: {
     fontSize: 14,
     fontWeight: "500",
+    includeFontPadding: false,
+    textAlign: "center",
   },
   availableCard: {
-    padding: spacing.md,
+    minHeight: 56,
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
     borderRadius: borderRadius.md,
     borderWidth: 1,
-    marginTop: spacing.md,
+    gap: spacing.md,
+  },
+  availableDivider: {
+    width: 1,
+    alignSelf: "stretch",
+    marginVertical: spacing.xs,
+  },
+  availableInfo: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
   },
   availableText: {
-    ...typography.body,
-    textAlign: "center",
+    flexShrink: 1,
+    fontSize: 11,
+    fontWeight: "600",
+    letterSpacing: 0.5,
+  },
+  availableCount: {
+    fontSize: 20,
+    fontWeight: "700",
+  },
+  emptyAvailableText: {
+    ...typography.caption,
+    marginTop: spacing.xs,
   },
   countOption: {
     flex: 1,
-    paddingVertical: spacing.md,
+    minWidth: 0,
+    minHeight: 46,
+    paddingHorizontal: spacing.xs,
+    paddingVertical: spacing.sm,
     borderRadius: borderRadius.md,
     borderWidth: 1,
     alignItems: "center",
+    justifyContent: "center",
   },
   countOptionText: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: "600",
+    includeFontPadding: false,
+  },
+  customCountOptionText: {
+    fontSize: 13,
+    fontWeight: "600",
+    includeFontPadding: false,
+    textAlign: "center",
+  },
+  customCountInput: {
+    borderWidth: 1,
+    borderRadius: borderRadius.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
+    marginTop: spacing.md,
+    fontSize: 16,
+  },
+  validationText: {
+    ...typography.caption,
+    marginTop: spacing.xs,
   },
   startButton: {
-    padding: spacing.md,
-    borderRadius: borderRadius.lg,
+    minHeight: 52,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    borderRadius: 999,
+    flexDirection: "row",
     alignItems: "center",
-    marginTop: spacing.lg,
+    justifyContent: "center",
+    gap: spacing.sm,
   },
   startButtonText: {
-    color: "#FFFFFF",
     fontSize: 18,
     fontWeight: "600",
   },

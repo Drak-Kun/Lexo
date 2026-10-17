@@ -5,6 +5,8 @@ const LANGUAGES_KEY = "@lexo_languages";
 const WORDS_KEY = "@lexo_words";
 const GRAMMAR_KEY = "@lexo_grammar";
 const ACTIVE_LANGUAGE_KEY = "@lexo_active_language";
+const DAILY_GOAL_TARGET_KEY = "@lexo_daily_goal_target";
+export const DEFAULT_DAILY_GOAL_TARGET = 10;
 
 // Language Storage
 export const getLanguages = async (): Promise<Language[]> => {
@@ -22,6 +24,7 @@ export const saveLanguages = async (languages: Language[]): Promise<void> => {
     await AsyncStorage.setItem(LANGUAGES_KEY, JSON.stringify(languages));
   } catch (error) {
     console.error("Error saving languages:", error);
+    throw error;
   }
 };
 
@@ -48,14 +51,71 @@ export const setActiveLanguageId = async (languageId: string): Promise<void> => 
   }
 };
 
+export const getDailyGoalTarget = async (): Promise<number> => {
+  try {
+    const data = await AsyncStorage.getItem(DAILY_GOAL_TARGET_KEY);
+    if (data === null) {
+      return DEFAULT_DAILY_GOAL_TARGET;
+    }
+
+    const target = Number(data);
+    if (!Number.isInteger(target) || target < 1) {
+      throw new Error("Stored daily goal target is invalid");
+    }
+    return target;
+  } catch (error) {
+    console.error("Error loading daily goal target:", error);
+    throw error;
+  }
+};
+
+export const setDailyGoalTarget = async (target: number): Promise<void> => {
+  if (!Number.isInteger(target) || target < 1) {
+    throw new Error("Daily goal target must be a positive integer");
+  }
+
+  try {
+    await AsyncStorage.setItem(DAILY_GOAL_TARGET_KEY, target.toString());
+  } catch (error) {
+    console.error("Error saving daily goal target:", error);
+    throw error;
+  }
+};
+
 // Word Storage
+const normalizeTags = (value: unknown): string[] => {
+  const tags = Array.isArray(value)
+    ? value
+    : typeof value === "string"
+      ? [value]
+      : [];
+
+  return tags
+    .filter((tag): tag is string => typeof tag === "string")
+    .map((tag) => tag.trim())
+    .filter((tag) => tag.length > 0);
+};
+
 export const getWords = async (): Promise<Word[]> => {
   try {
     const data = await AsyncStorage.getItem(WORDS_KEY);
-    return data ? JSON.parse(data) : [];
+    if (!data) return [];
+
+    const storedWords: unknown = JSON.parse(data);
+    if (!Array.isArray(storedWords)) {
+      throw new Error("Stored words must be an array");
+    }
+
+    return storedWords.map((value): Word => {
+      if (!value || typeof value !== "object" || Array.isArray(value)) {
+        throw new Error("Stored word is invalid");
+      }
+      const storedWord = value as Record<string, unknown>;
+      return { ...storedWord, tags: normalizeTags(storedWord.tags) } as Word;
+    });
   } catch (error) {
     console.error("Error loading words:", error);
-    return [];
+    throw error;
   }
 };
 
@@ -64,11 +124,15 @@ export const saveWords = async (words: Word[]): Promise<void> => {
     await AsyncStorage.setItem(WORDS_KEY, JSON.stringify(words));
   } catch (error) {
     console.error("Error saving words:", error);
+    throw error;
   }
 };
 
 export const addWord = async (word: Word): Promise<void> => {
   const words = await getWords();
+  if (words.some((existingWord) => existingWord.id === word.id)) {
+    throw new Error(`Word with id "${word.id}" already exists`);
+  }
   words.push(word);
   await saveWords(words);
 };
@@ -79,7 +143,9 @@ export const updateWord = async (updatedWord: Word): Promise<void> => {
   if (index !== -1) {
     words[index] = updatedWord;
     await saveWords(words);
+    return;
   }
+  throw new Error(`Word with id "${updatedWord.id}" was not found`);
 };
 
 export const deleteWord = async (wordId: string): Promise<void> => {

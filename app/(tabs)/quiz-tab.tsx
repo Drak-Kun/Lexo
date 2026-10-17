@@ -1,17 +1,21 @@
 import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import { useRouter } from "expo-router";
-import { useApp } from "../../context/AppContext";
 import { colors, spacing, borderRadius, typography } from "../../constants/theme";
+import { ArrowRight, Target } from "lucide-react-native";
 
 export default function QuizTabScreen() {
-  const { isDark } = useApp();
   const router = useRouter();
-  const theme = isDark ? colors.dark : colors.light;
+  const theme = colors.dark;
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       <View style={styles.content}>
-        <Text style={[styles.icon, { color: theme.textSecondary }]}>🎯</Text>
+        <Target
+          size={72}
+          color={theme.accent.purple}
+          strokeWidth={1.75}
+          style={styles.icon}
+        />
         <Text style={[styles.title, { color: theme.text }]}>Ready to Quiz?</Text>
         <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
           Test your knowledge with custom quizzes
@@ -21,7 +25,10 @@ export default function QuizTabScreen() {
           style={[styles.button, { backgroundColor: theme.primary }]}
           onPress={() => router.push("/quiz-setup")}
         >
-          <Text style={styles.buttonText}>Start Quiz →</Text>
+          <View style={styles.buttonContent}>
+            <Text style={styles.buttonText}>Start Quiz</Text>
+            <ArrowRight size={20} color={theme.onPrimary} strokeWidth={2} />
+          </View>
         </TouchableOpacity>
       </View>
     </View>
@@ -39,7 +46,6 @@ const styles = StyleSheet.create({
     padding: spacing.xl,
   },
   icon: {
-    fontSize: 80,
     marginBottom: spacing.lg,
   },
   title: {
@@ -60,5 +66,11 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontSize: 18,
     fontWeight: "600",
+  },
+  buttonContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: spacing.sm,
   },
 });

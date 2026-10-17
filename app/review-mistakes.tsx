@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 import {
   View,
   Text,
@@ -6,16 +6,16 @@ import {
   ScrollView,
   TouchableOpacity,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams } from "expo-router";
-import { useApp } from "../context/AppContext";
 import { colors, spacing, borderRadius, typography } from "../constants/theme";
 import { QuizQuestion } from "../types";
+import { ArrowLeft } from "lucide-react-native";
 
 export default function ReviewMistakesScreen() {
   const params = useLocalSearchParams();
-  const { isDark } = useApp();
   const router = useRouter();
-  const theme = isDark ? colors.dark : colors.light;
+  const theme = colors.dark;
 
   const mistakes: QuizQuestion[] = params.mistakes
     ? JSON.parse(params.mistakes as string)
@@ -36,24 +36,45 @@ export default function ReviewMistakesScreen() {
 
   if (mistakes.length === 0) {
     return (
-      <View style={[styles.container, { backgroundColor: theme.background }]}>
+      <SafeAreaView
+        edges={["top", "bottom"]}
+        style={[styles.container, { backgroundColor: theme.background }]}
+      >
         <Text style={[styles.errorText, { color: theme.text }]}>No mistakes to review</Text>
-      </View>
+      </SafeAreaView>
     );
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.background }]}>
+    <SafeAreaView
+      edges={["top", "bottom"]}
+      style={[styles.container, { backgroundColor: theme.background }]}
+    >
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()}>
-          <Text style={[styles.backButton, { color: theme.text }]}>← Back</Text>
-        </TouchableOpacity>
-        <Text style={[styles.title, { color: theme.text }]}>Review Mistakes</Text>
-        <View style={{ width: 60 }} />
+        <View style={styles.headerSide}>
+          <TouchableOpacity
+            onPress={() => router.back()}
+            style={styles.backButtonWrap}
+            accessibilityRole="button"
+            accessibilityLabel="Back"
+          >
+            <ArrowLeft size={18} color={theme.text} strokeWidth={2} />
+            <Text style={[styles.backButton, { color: theme.text }]}>Back</Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.headerCenter}>
+          <Text style={[styles.title, { color: theme.text }]}>Review Mistakes</Text>
+        </View>
+
+        <View style={styles.headerSide} />
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+      >
         <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
           Review the questions you got wrong and learn from your mistakes.
         </Text>
@@ -125,7 +146,7 @@ export default function ReviewMistakesScreen() {
           <Text style={styles.practiceButtonText}>Practice Again ({mistakes.length})</Text>
         </TouchableOpacity>
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -135,22 +156,40 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
     paddingHorizontal: spacing.lg,
-    paddingTop: 60,
+    paddingTop: spacing.sm,
     paddingBottom: spacing.md,
+  },
+  headerSide: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "flex-start",
+  },
+  headerCenter: {
+    flex: 2,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  backButtonWrap: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs,
+    paddingVertical: spacing.xs,
   },
   backButton: {
     fontSize: 16,
     fontWeight: "500",
-    width: 60,
   },
   title: {
     ...typography.title,
+    textAlign: "center",
+    fontSize: 24,
   },
   scrollContent: {
-    padding: spacing.lg,
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.xl,
+    paddingTop: spacing.xs,
   },
   subtitle: {
     ...typography.body,
@@ -200,9 +239,12 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   practiceButton: {
-    padding: spacing.md,
-    borderRadius: borderRadius.lg,
+    minHeight: 52,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    borderRadius: 999,
     alignItems: "center",
+    justifyContent: "center",
     marginTop: spacing.lg,
   },
   practiceButtonText: {

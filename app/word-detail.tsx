@@ -1,38 +1,64 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useCallback } from "react";
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
-  TouchableOpacity,
   Alert,
+  ActivityIndicator,
 } from "react-native";
-import { useRouter, useLocalSearchParams } from "expo-router";
+import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useApp } from "../context/AppContext";
 import { colors, spacing, borderRadius, typography } from "../constants/theme";
 import { getWords, deleteWord } from "../storage";
 import { Word } from "../types";
 import * as Speech from "expo-speech";
+import { ArrowLeft, Pencil, Trash2, Volume2 } from "lucide-react-native";
+import {
+  MotionEntrance,
+  MotionTouchableOpacity as TouchableOpacity,
+} from "../components/Motion";
 
 export default function WordDetailScreen() {
-  const { id } = useLocalSearchParams();
-  const { activeLanguage, isDark, refreshData } = useApp();
+  const { id } = useLocalSearchParams<{ id?: string | string[] }>();
+  const { activeLanguage, refreshData } = useApp();
   const router = useRouter();
-  const theme = isDark ? colors.dark : colors.light;
+  const theme = colors.dark;
 
   const [word, setWord] = useState<Word | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    loadWord();
-  }, [id]);
+  useFocusEffect(
+    useCallback(() => {
+      let isCurrent = true;
+      const loadWord = async () => {
+        setIsLoading(true);
+        try {
+          const words = await getWords();
+          const wordId = Array.isArray(id) ? id[0] : id;
+          const found = words.find((item) => item.id === wordId);
+          if (isCurrent) setWord(found || null);
+        } catch (error) {
+          console.error("Error loading word details:", error);
+          if (isCurrent) {
+            setWord(null);
+            Alert.alert("Error", "Unable to load this word.");
+          }
+        } finally {
+          if (isCurrent) setIsLoading(false);
+        }
+      };
 
-  const loadWord = async () => {
-    const words = await getWords();
-    const found = words.find((w) => w.id === id);
-    setWord(found || null);
-  };
+      loadWord();
+      return () => {
+        isCurrent = false;
+      };
+    }, [id])
+  );
 
   const handleDelete = () => {
+    if (!word) return;
     Alert.alert(
       "Delete Word",
       "Are you sure you want to delete this word?",
@@ -41,10 +67,17 @@ export default function WordDetailScreen() {
         {
           text: "Delete",
           style: "destructive",
-          onPress: async () => {
-            await deleteWord(id as string);
-            await refreshData();
-            router.back();
+          onPress: () => {
+            void (async () => {
+              try {
+                await deleteWord(word.id);
+                await refreshData();
+                router.back();
+              } catch (error) {
+                console.error("Error deleting word:", error);
+                Alert.alert("Error", "Unable to delete this word.");
+              }
+            })();
           },
         },
       ]
@@ -60,46 +93,110 @@ export default function WordDetailScreen() {
     }
   };
 
+  if (isLoading) {
+    return (
+      <SafeAreaView edges={["top"]} style={[styles.container, styles.loading, { backgroundColor: theme.background }]}>
+        <ActivityIndicator size="large" color={theme.primary} />
+      </SafeAreaView>
+    );
+  }
+
   if (!word) {
     return (
-      <View style={[styles.container, { backgroundColor: theme.background }]}>
-        <Text style={[styles.errorText, { color: theme.text }]}>Word not found</Text>
-      </View>
+      <SafeAreaView edges={["top"]} style={[styles.container, { backgroundColor: theme.background }]}>
+        <MotionEntrance>
+          <Text style={[styles.errorText, { color: theme.text }]}>Word not found</Text>
+        </MotionEntrance>
+      </SafeAreaView>
     );
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.background }]}>
+    <SafeAreaView edges={["top"]} style={[styles.container, { backgroundColor: theme.background }]}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()}>
-          <Text style={[styles.backButton, { color: theme.text }]}>← Back</Text>
-        </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: theme.text }]}>Word Details</Text>
-        <TouchableOpacity onPress={handleDelete}>
-          <Text style={[styles.deleteButton, { color: theme.accent.red }]}>🗑️</Text>
-        </TouchableOpacity>
+        <View style={styles.headerColumn}>
+          <TouchableOpacity
+            onPress={() => router.back()}
+            style={styles.backButton}
+            accessibilityRole="button"
+            accessibilityLabel="Back"
+          >
+            <ArrowLeft size={22} color={theme.text} strokeWidth={2} />
+          </TouchableOpacity>
+        </View>
+        <View style={[styles.headerColumn, styles.headerCenter]}>
+          <Text
+            style={[styles.headerTitle, { color: theme.text }]}
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.8}
+          >
+            Word Details
+          </Text>
+        </View>
+        <View style={[styles.headerColumn, styles.headerRight]}>
+          <TouchableOpacity
+            onPress={handleDelete}
+            style={styles.deleteButton}
+            accessibilityRole="button"
+            accessibilityLabel="Delete word"
+          >
+            <Trash2 size={20} color={theme.accent.red} strokeWidth={1.9} />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
         {/* Main Card */}
-        <View style={[styles.mainCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+        <MotionEntrance style={[styles.mainCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
           <View style={styles.mainCardHeader}>
             <Text style={[styles.word, { color: theme.text }]}>{word.word}</Text>
-            <TouchableOpacity onPress={speak} style={styles.speakerButton}>
-              <Text style={styles.speakerIcon}>🔊</Text>
+            <TouchableOpacity
+              onPress={speak}
+              style={styles.speakerButton}
+              accessibilityRole="button"
+              accessibilityLabel={`Pronounce ${word.word}`}
+            >
+              <Volume2 size={20} color={theme.textSecondary} strokeWidth={2} />
             </TouchableOpacity>
           </View>
-
           {word.reading && (
-            <Text style={[styles.reading, { color: theme.textSecondary }]}>{word.reading}</Text>
+            <View style={styles.readingBlock}>
+              <Text style={[styles.sectionLabel, { color: theme.textSecondary }]}>Reading</Text>
+              <Text style={[styles.reading, { color: theme.text }]}>{word.reading}</Text>
+            </View>
           )}
 
           <View style={styles.divider} />
 
           <Text style={[styles.sectionLabel, { color: theme.textSecondary }]}>Meaning</Text>
           <Text style={[styles.meaning, { color: theme.text }]}>{word.meaning}</Text>
-        </View>
+
+          {word.tags.length > 0 && (
+            <View style={styles.mainCardTags}>
+              {word.tags.map((tag, index) => (
+                <View
+                  key={`${tag}-${index}`}
+                  style={[styles.tag, { backgroundColor: theme.tagSurface, borderColor: theme.tagBorder }]}
+                >
+                  <Text style={[styles.tagText, { color: theme.accent.purple }]}>{tag}</Text>
+                </View>
+              ))}
+            </View>
+          )}
+
+          <TouchableOpacity
+            style={[styles.editButton, { backgroundColor: theme.primary }]}
+            onPress={() => router.push({ pathname: "/add-word", params: { id: word.id } })}
+            accessibilityRole="button"
+          >
+            <View style={styles.editButtonContent}>
+              <Pencil size={17} color={theme.onPrimary} strokeWidth={2} />
+              <Text style={styles.editButtonText}>Edit Word</Text>
+            </View>
+          </TouchableOpacity>
+        </MotionEntrance>
 
         {/* Example */}
         {word.example && (
@@ -121,60 +218,36 @@ export default function WordDetailScreen() {
           </View>
         )}
 
-        {/* Tags */}
-        {word.tags.length > 0 && (
-          <View style={styles.section}>
-            <Text style={[styles.sectionTitle, { color: theme.text }]}>Tags</Text>
-            <View style={styles.tagsContainer}>
-              {word.tags.map((tag, index) => (
-                <View
-                  key={index}
-                  style={[
-                    styles.tag,
-                    { backgroundColor: theme.accent.cyan + "20", borderColor: theme.accent.cyan },
-                  ]}
-                >
-                  <Text style={[styles.tagText, { color: theme.accent.cyan }]}>{tag}</Text>
-                </View>
-              ))}
-            </View>
-          </View>
-        )}
-
         {/* Learning Status */}
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: theme.text }]}>Learning Status</Text>
-          <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
-            <View style={styles.statRow}>
-              <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Status</Text>
-              <Text style={[styles.statValue, { color: theme.accent.purple }]}>
+          <View style={[styles.card, styles.learningCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+            <View style={styles.statusRow}>
+              <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Current status</Text>
+              <Text style={[styles.statValue, styles.statusValue, { color: theme.accent.purple }]}>
                 {word.status.charAt(0).toUpperCase() + word.status.slice(1)}
               </Text>
             </View>
-            <View style={styles.statRow}>
-              <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Review Count</Text>
+            <View style={[styles.statRow, { borderColor: theme.border }]}>
+              <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Reviews</Text>
               <Text style={[styles.statValue, { color: theme.text }]}>{word.reviewCount}</Text>
             </View>
-            <View style={styles.statRow}>
-              <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Correct</Text>
-              <Text style={[styles.statValue, { color: theme.accent.green }]}>
-                {word.correctCount}
-              </Text>
+            <View style={[styles.statRow, { borderColor: theme.border }]}>
+              <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Correct answers</Text>
+              <Text style={[styles.statValue, { color: theme.accent.green }]}>{word.correctCount}</Text>
             </View>
-            <View style={styles.statRow}>
-              <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Incorrect</Text>
-              <Text style={[styles.statValue, { color: theme.accent.red }]}>
-                {word.incorrectCount}
-              </Text>
+            <View style={[styles.statRow, { borderColor: theme.border }]}>
+              <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Incorrect answers</Text>
+              <Text style={[styles.statValue, { color: theme.accent.red }]}>{word.incorrectCount}</Text>
             </View>
-            <View style={styles.statRow}>
+            <View style={[styles.statRow, styles.lastStatRow]}>
               <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Streak</Text>
               <Text style={[styles.statValue, { color: theme.accent.yellow }]}>{word.streak}</Text>
             </View>
           </View>
         </View>
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -182,117 +255,185 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  loading: {
+    justifyContent: "center",
+    alignItems: "center",
+  },
   header: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: spacing.lg,
-    paddingTop: 60,
-    paddingBottom: spacing.md,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    minHeight: 56,
+  },
+  headerColumn: {
+    flex: 1,
+    minWidth: 0,
+    justifyContent: "center",
+  },
+  headerCenter: {
+    alignItems: "center",
+  },
+  headerRight: {
+    alignItems: "flex-end",
   },
   backButton: {
-    fontSize: 16,
-    fontWeight: "500",
-    width: 60,
+    width: 44,
+    height: 44,
+    alignItems: "flex-start",
+    justifyContent: "center",
+  },
+  deleteButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: colors.dark.elevated,
+    alignItems: "center",
+    justifyContent: "center",
   },
   headerTitle: {
     ...typography.heading,
-  },
-  deleteButton: {
-    fontSize: 24,
-    width: 60,
-    textAlign: "right",
+    width: "100%",
+    textAlign: "center",
+    fontSize: 17,
   },
   scrollContent: {
-    padding: spacing.lg,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.xs,
+    paddingBottom: spacing.xl,
   },
   mainCard: {
     padding: spacing.lg,
     borderRadius: borderRadius.lg,
     borderWidth: 1,
-    marginBottom: spacing.lg,
+    marginBottom: spacing.md,
   },
   mainCardHeader: {
     flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
+    alignItems: "center",
   },
   word: {
     fontSize: 32,
     fontWeight: "700",
-    marginBottom: spacing.xs,
     flex: 1,
+    flexShrink: 1,
+    lineHeight: 40,
   },
   speakerButton: {
-    padding: spacing.sm,
-  },
-  speakerIcon: {
-    fontSize: 28,
+    width: 44,
+    height: 44,
+    justifyContent: "center",
+    alignItems: "center",
+    marginLeft: spacing.sm,
   },
   reading: {
-    fontSize: 20,
-    marginBottom: spacing.md,
+    ...typography.body,
+    lineHeight: 22,
+  },
+  readingBlock: {
+    marginTop: spacing.sm,
   },
   divider: {
     height: 1,
-    backgroundColor: "#2D2D2D",
-    marginVertical: spacing.md,
+    backgroundColor: colors.dark.divider,
+    marginVertical: spacing.sm,
   },
   sectionLabel: {
-    ...typography.caption,
+    ...typography.small,
     textTransform: "uppercase",
-    marginBottom: spacing.xs,
+    marginBottom: 2,
   },
   meaning: {
-    fontSize: 18,
+    fontSize: 16,
+    lineHeight: 23,
+  },
+  mainCardTags: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.sm,
+    marginTop: spacing.md,
+    marginBottom: spacing.md,
+  },
+  editButton: {
+    minHeight: 46,
+    justifyContent: "center",
+    alignItems: "center",
+    borderRadius: borderRadius.md,
+  },
+  editButtonContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: spacing.sm,
+  },
+  editButtonText: {
+    color: colors.dark.onPrimary,
+    fontSize: 16,
+    fontWeight: "700",
   },
   section: {
-    marginBottom: spacing.lg,
+    marginBottom: spacing.sm,
   },
   sectionTitle: {
-    ...typography.heading,
-    marginBottom: spacing.sm,
+    fontSize: 16,
+    fontWeight: "600",
+    marginBottom: spacing.xs,
   },
   card: {
     padding: spacing.md,
-    borderRadius: borderRadius.md,
+    borderRadius: borderRadius.lg,
     borderWidth: 1,
+  },
+  learningCard: {
+    paddingVertical: spacing.xs,
   },
   cardText: {
     ...typography.body,
     lineHeight: 24,
   },
-  tagsContainer: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: spacing.sm,
-  },
   tag: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    minHeight: 26,
+    justifyContent: "center",
+    paddingHorizontal: spacing.sm,
     borderRadius: borderRadius.sm,
     borderWidth: 1,
   },
   tagText: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: "500",
+  },
+  statusRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    minHeight: 42,
+    paddingVertical: spacing.xs,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.dark.divider,
+  },
+  lastStatRow: {
+    borderBottomWidth: 0,
   },
   statRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingVertical: spacing.sm,
+    minHeight: 42,
+    paddingVertical: spacing.xs,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.dark.divider,
   },
+  statusValue: { textTransform: "capitalize" },
   statLabel: {
-    ...typography.body,
+    fontSize: 12,
   },
   statValue: {
-    ...typography.body,
+    fontSize: 16,
     fontWeight: "600",
   },
   errorText: {
     ...typography.body,
     textAlign: "center",
-    marginTop: 100,
+    marginTop: spacing.xl,
   },
 });

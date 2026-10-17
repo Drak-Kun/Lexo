@@ -3,9 +3,12 @@ import {
   View,
   Text,
   StyleSheet,
+  ScrollView,
   TouchableOpacity,
   Animated,
   Easing,
+  StyleProp,
+  TextStyle,
 } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useApp } from "../context/AppContext";
@@ -14,12 +17,13 @@ import { generateQuizQuestions } from "../utils/quiz";
 import { QuizQuestion, ContentType } from "../types";
 import * as Haptics from "expo-haptics";
 import { updateWord, updateGrammar } from "../storage";
+import { ArrowRight, CircleCheck, CircleX, X } from "lucide-react-native";
 
 export default function QuizScreen() {
   const params = useLocalSearchParams();
-  const { words, grammar, isDark, refreshData } = useApp();
+  const { words, grammar, refreshData } = useApp();
   const router = useRouter();
-  const theme = isDark ? colors.dark : colors.light;
+  const theme = colors.dark;
 
   const [countdown, setCountdown] = useState(3);
   const [showCountdown, setShowCountdown] = useState(true);
@@ -183,8 +187,13 @@ export default function QuizScreen() {
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()}>
-          <Text style={[styles.closeButton, { color: theme.text }]}>✕</Text>
+        <TouchableOpacity
+          onPress={() => router.back()}
+          style={styles.closeButton}
+          accessibilityRole="button"
+          accessibilityLabel="Exit quiz"
+        >
+          <X size={22} color={theme.text} strokeWidth={2} />
         </TouchableOpacity>
         <Text style={[styles.questionCounter, { color: theme.text }]}>
           {currentIndex + 1} / {questions.length}
@@ -203,85 +212,101 @@ export default function QuizScreen() {
       </View>
 
       <Animated.View style={[styles.content, { transform: [{ scale: scaleAnim }] }]}>
-        {/* Question */}
-        <View style={styles.questionContainer}>
-          <Text style={[styles.questionLabel, { color: theme.textSecondary }]}>
-            What does this mean?
-          </Text>
-          <Text style={[styles.question, { color: theme.text }]}>
-            {currentQuestion.question}
-          </Text>
-        </View>
+        <ScrollView
+          style={styles.contentScroll}
+          contentContainerStyle={styles.contentScrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.questionContainer}>
+            <Text style={[styles.questionLabel, { color: theme.textSecondary }]}>
+              What does this mean?
+            </Text>
+            <Text style={[styles.question, { color: theme.text }]}>
+              {currentQuestion.question}
+            </Text>
+          </View>
 
-        {/* Options */}
-        <View style={styles.optionsContainer}>
-          {currentQuestion.options?.map((option, index) => {
-            let optionStyle = [
-              styles.option,
-              { backgroundColor: theme.card, borderColor: theme.border },
-            ];
-            let optionTextStyle = [styles.optionText, { color: theme.text }];
+          <View style={styles.optionsContainer}>
+            {currentQuestion.options?.map((option, index) => {
+              let optionStyle = [
+                styles.option,
+                { backgroundColor: theme.card, borderColor: theme.border },
+              ];
+              let optionTextStyle: StyleProp<TextStyle> = [
+                styles.optionText,
+                { color: theme.text },
+              ];
 
-            if (showFeedback) {
-              if (option === currentQuestion.correctAnswer) {
+              if (showFeedback) {
+                if (option === currentQuestion.correctAnswer) {
+                  optionStyle = [
+                    styles.option,
+                    {
+                      backgroundColor: theme.accent.green + "20",
+                      borderColor: theme.accent.green,
+                    },
+                  ];
+                  optionTextStyle = [
+                    styles.optionText,
+                    { color: theme.accent.green, fontWeight: "600" },
+                  ];
+                } else if (option === selectedAnswer && !currentQuestion.isCorrect) {
+                  optionStyle = [
+                    styles.option,
+                    {
+                      backgroundColor: theme.accent.red + "20",
+                      borderColor: theme.accent.red,
+                    },
+                  ];
+                  optionTextStyle = [
+                    styles.optionText,
+                    { color: theme.accent.red, fontWeight: "600" },
+                  ];
+                }
+              } else if (option === selectedAnswer) {
                 optionStyle = [
                   styles.option,
-                  {
-                    backgroundColor: theme.accent.green + "20",
-                    borderColor: theme.accent.green,
-                  },
-                ];
-                optionTextStyle = [
-                  styles.optionText,
-                  { color: theme.accent.green, fontWeight: "600" },
-                ];
-              } else if (option === selectedAnswer && !currentQuestion.isCorrect) {
-                optionStyle = [
-                  styles.option,
-                  {
-                    backgroundColor: theme.accent.red + "20",
-                    borderColor: theme.accent.red,
-                  },
-                ];
-                optionTextStyle = [
-                  styles.optionText,
-                  { color: theme.accent.red, fontWeight: "600" },
+                  { backgroundColor: theme.primary + "20", borderColor: theme.primary },
                 ];
               }
-            } else if (option === selectedAnswer) {
-              optionStyle = [
-                styles.option,
-                { backgroundColor: theme.primary + "20", borderColor: theme.primary },
-              ];
-            }
 
-            return (
-              <TouchableOpacity
-                key={index}
-                style={optionStyle}
-                onPress={() => handleAnswer(option)}
-                disabled={showFeedback}
-              >
-                <Text style={optionTextStyle}>{option}</Text>
-                {showFeedback && option === currentQuestion.correctAnswer && (
-                  <Text style={styles.checkmark}>✓</Text>
+              return (
+                <TouchableOpacity
+                  key={index}
+                  style={optionStyle}
+                  onPress={() => handleAnswer(option)}
+                  disabled={showFeedback}
+                >
+                  <Text style={optionTextStyle}>{option}</Text>
+                  {showFeedback && option === currentQuestion.correctAnswer && (
+                    <CircleCheck size={20} color={theme.accent.green} strokeWidth={2} />
+                  )}
+                  {showFeedback &&
+                    option === selectedAnswer &&
+                    !currentQuestion.isCorrect && (
+                      <CircleX size={20} color={theme.accent.red} strokeWidth={2} />
+                    )}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
+          {showFeedback && (
+            <TouchableOpacity
+              style={[styles.nextButton, { backgroundColor: theme.primary }]}
+              onPress={handleNext}
+            >
+              <View style={styles.nextButtonContent}>
+                <Text style={styles.nextButtonText}>
+                  {currentIndex < questions.length - 1 ? "Next" : "Finish"}
+                </Text>
+                {currentIndex < questions.length - 1 && (
+                  <ArrowRight size={20} color={theme.onPrimary} strokeWidth={2} />
                 )}
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-
-        {/* Next Button */}
-        {showFeedback && (
-          <TouchableOpacity
-            style={[styles.nextButton, { backgroundColor: theme.primary }]}
-            onPress={handleNext}
-          >
-            <Text style={styles.nextButtonText}>
-              {currentIndex < questions.length - 1 ? "Next →" : "Finish"}
-            </Text>
-          </TouchableOpacity>
-        )}
+              </View>
+            </TouchableOpacity>
+          )}
+        </ScrollView>
       </Animated.View>
     </View>
   );
@@ -309,8 +334,10 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.md,
   },
   closeButton: {
-    fontSize: 28,
     width: 40,
+    height: 44,
+    alignItems: "center",
+    justifyContent: "center",
   },
   questionCounter: {
     ...typography.body,
@@ -328,11 +355,17 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
+  },
+  contentScroll: {
+    flex: 1,
+  },
+  contentScrollContent: {
+    flexGrow: 1,
     padding: spacing.lg,
-    justifyContent: "space-between",
   },
   questionContainer: {
     marginTop: spacing.xl,
+    marginBottom: spacing.xl,
   },
   questionLabel: {
     ...typography.body,
@@ -358,15 +391,17 @@ const styles = StyleSheet.create({
     fontSize: 18,
     flex: 1,
   },
-  checkmark: {
-    fontSize: 24,
-    color: "#39D99A",
-  },
   nextButton: {
     padding: spacing.md,
     borderRadius: borderRadius.lg,
     alignItems: "center",
     marginTop: spacing.lg,
+  },
+  nextButtonContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: spacing.sm,
   },
   nextButtonText: {
     color: "#FFFFFF",

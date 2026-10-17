@@ -3,6 +3,7 @@ import { useColorScheme } from "react-native";
 import { Language, Word, Grammar } from "../types";
 import {
   getLanguages,
+  addLanguage as addStoredLanguage,
   getActiveLanguageId,
   setActiveLanguageId,
   getWordsByLanguage,
@@ -18,6 +19,7 @@ interface AppContextType {
   isDark: boolean;
   isLoading: boolean;
   setActiveLanguage: (languageId: string) => Promise<void>;
+  createLanguage: (language: Language) => Promise<void>;
   refreshData: () => Promise<void>;
 }
 
@@ -63,16 +65,33 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const setActiveLanguage = async (languageId: string) => {
-    await setActiveLanguageId(languageId);
     const lang = languages.find((l) => l.id === languageId);
-    setActiveLanguageState(lang || null);
-
-    if (lang) {
-      const wordsData = await getWordsByLanguage(lang.id);
-      const grammarData = await getGrammarByLanguage(lang.id);
-      setWords(wordsData);
-      setGrammar(grammarData);
+    if (!lang) {
+      throw new Error(`Language not found: ${languageId}`);
     }
+
+    const [wordsData, grammarData] = await Promise.all([
+      getWordsByLanguage(lang.id),
+      getGrammarByLanguage(lang.id),
+    ]);
+    await setActiveLanguageId(languageId);
+    setWords(wordsData);
+    setGrammar(grammarData);
+    setActiveLanguageState(lang);
+  };
+
+  const createLanguage = async (language: Language) => {
+    await addStoredLanguage(language);
+    const updatedLanguages = await getLanguages();
+    const [wordsData, grammarData] = await Promise.all([
+      getWordsByLanguage(language.id),
+      getGrammarByLanguage(language.id),
+    ]);
+    await setActiveLanguageId(language.id);
+    setLanguages(updatedLanguages);
+    setWords(wordsData);
+    setGrammar(grammarData);
+    setActiveLanguageState(language);
   };
 
   const refreshData = async () => {
@@ -94,6 +113,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         isDark,
         isLoading,
         setActiveLanguage,
+        createLanguage,
         refreshData,
       }}
     >

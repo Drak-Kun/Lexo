@@ -1,5 +1,19 @@
 import { Word, Grammar, QuizQuestion, QuestionType, ContentType } from "../types";
 
+export const MAX_QUIZ_QUESTIONS = 100;
+
+export const getQuestionCountValidationError = (value: string): string | null => {
+  const trimmedValue = value.trim();
+  if (trimmedValue.length === 0) return "Enter a question count.";
+  if (!/^\d+$/.test(value) || Number(value) <= 0) {
+    return "Enter a positive whole number.";
+  }
+  if (Number(value) > MAX_QUIZ_QUESTIONS) {
+    return `Maximum ${MAX_QUIZ_QUESTIONS} questions.`;
+  }
+  return null;
+};
+
 // Shuffle array
 const shuffleArray = <T,>(array: T[]): T[] => {
   const shuffled = [...array];
@@ -151,6 +165,14 @@ export const generateQuizQuestions = (
   selectedTags: string[],
   questionCount: number
 ): QuizQuestion[] => {
+  if (
+    !Number.isInteger(questionCount) ||
+    questionCount <= 0 ||
+    questionCount > MAX_QUIZ_QUESTIONS
+  ) {
+    return [];
+  }
+
   let availableWords: Word[] = [];
   let availableGrammar: Grammar[] = [];
 
@@ -167,30 +189,22 @@ export const generateQuizQuestions = (
     availableGrammar = grammar;
   }
 
-  let questions: QuizQuestion[] = [];
+  const candidates = shuffleArray([
+    ...(contentType === "grammar" ? [] : availableWords.map((content) => ({ type: "words" as const, content }))),
+    ...(contentType === "words" ? [] : availableGrammar.map((content) => ({ type: "grammar" as const, content }))),
+  ]);
 
-  if (contentType === "words") {
-    const shuffled = shuffleArray(availableWords);
-    const selected = shuffled.slice(0, questionCount);
-    questions = selected.map((word) => generateWordQuestion(word, availableWords));
-  } else if (contentType === "grammar") {
-    const shuffled = shuffleArray(availableGrammar);
-    const selected = shuffled.slice(0, questionCount);
-    questions = selected.map((g) => generateGrammarQuestion(g, availableGrammar));
-  } else if (contentType === "mixed") {
-    const wordQuestions = Math.floor(questionCount / 2);
-    const grammarQuestions = questionCount - wordQuestions;
+  if (candidates.length === 0) return [];
 
-    const shuffledWords = shuffleArray(availableWords).slice(0, wordQuestions);
-    const shuffledGrammar = shuffleArray(availableGrammar).slice(0, grammarQuestions);
-
-    const wordQs = shuffledWords.map((w) => generateWordQuestion(w, availableWords));
-    const grammarQs = shuffledGrammar.map((g) => generateGrammarQuestion(g, availableGrammar));
-
-    questions = shuffleArray([...wordQs, ...grammarQs]);
-  }
-
-  return questions;
+  const questionIdTimestamp = Date.now();
+  return Array.from({ length: questionCount }, (_, index) => {
+    const candidate = candidates[index % candidates.length];
+    const question = candidate.type === "words"
+      ? generateWordQuestion(candidate.content, availableWords)
+      : generateGrammarQuestion(candidate.content, availableGrammar);
+    question.id = `q-${candidate.content.id}-${questionIdTimestamp + index}`;
+    return question;
+  });
 };
 
 // Get all unique tags
