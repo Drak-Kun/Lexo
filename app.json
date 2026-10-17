@@ -21,6 +21,7 @@
       "eas": {
         "projectId": "fd22cbd3-23f1-4032-8a99-c890f0492ee5"
       }
-    }
+    },
+    "icon": "./assets/lexo-logo.png"
   }
 }
