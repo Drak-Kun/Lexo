@@ -1,108 +1,95 @@
-# Lexo - Multi-Language Learning App
+Lexo
 
-A polished mobile language-learning app built with React Native and Expo.
+A modern, mobile-first language learning app.
 
-## Features
+Lexo helps you learn vocabulary and grammar, test your knowledge with quizzes, and track your learning progress. Built for learners who want a simple, organized way to practice a language on their phone.
 
-✅ **Multi-Language Support**
-- Learn any language (Japanese, Spanish, French, German, etc.)
-- Easy language switching
-- Language-aware pronunciation
+✨ Features
 
-✅ **Personal Learning Library**
-- Add custom words with meanings, readings, examples, and notes
-- Add grammar points with formations, examples, and translations
-- Tag-based organization
-- Powerful search across all content
+- Home — View your selected language, learning streak, word and grammar shortcuts, progress, and quiz entry point.
+- Words — Browse and manage vocabulary, search words, and organize learning material with tags.
+- Grammar — Keep grammar topics organized for focused study.
+- Quizzes — Test your knowledge with multiple-choice and other supported quiz flows.
+- Progress tracking — Monitor your learning activity and performance.
+- Multiple languages — Support for language-specific content, including Japanese and Spanish.
+- Dark interface — A black-themed UI with restrained accent colors.
+- Language-specific visuals — Dedicated hero imagery for supported languages.
 
-✅ **Smart Quiz System**
-- Choose content type (Words, Grammar, Mixed)
-- Filter by tags
-- Multiple question types
-- Immediate feedback with haptics
-- Progress tracking
+🛠️ Tech Stack
 
-✅ **Learning Analytics**
-- Daily and weekly progress
-- Streak tracking
-- Review statistics
-- Learning status (New, Learning, Familiar, Mastered)
+- React Native
+- Expo
+- TypeScript
+- Expo Router
+- Android
 
-✅ **Beautiful UI**
-- Premium minimal design
-- Automatic dark/light theme
-- AMOLED dark mode
-- Smooth animations
+📱 Project Structure
 
-## Getting Started
+The main application is organized around Expo Router.
 
-### Prerequisites
-- Node.js installed
-- Expo Go app on your mobile device (or Android/iOS emulator)
+.
+├── app/              # Application screens and navigation
+├── assets/           # Images, icons, and other static assets
+├── components/       # Reusable UI components
+├── constants/        # Shared constants and configuration
+├── hooks/            # Custom React hooks
+├── app.json          # Expo application configuration
+├── eas.json          # EAS Build configuration
+└── package.json      # Dependencies and scripts
 
-### Installation
+The exact folders may vary as development continues.
 
-1. Install dependencies:
-```bash
+🚀 Getting Started
+
+Requirements
+
+- Node.js
+- npm
+- Expo-compatible development environment
+
+Install dependencies
+
 npm install
-```
 
-2. Start the development server:
-```bash
-npm start
-```
+Start the development server
 
-3. Scan the QR code with Expo Go (Android) or Camera app (iOS)
+npx expo start
 
-## Project Structure
+To clear the Metro cache:
 
-```
-lexo/
-├── app/                    # Screens and navigation
-│   ├── (tabs)/            # Bottom tab screens
-│   │   ├── index.tsx      # Home/Dashboard
-│   │   ├── words.tsx      # Words library
-│   │   ├── grammar.tsx    # Grammar library
-│   │   └── quiz-tab.tsx   # Quiz launcher
-│   ├── add-word.tsx       # Add word screen
-│   ├── add-grammar.tsx    # Add grammar screen
-│   ├── word-detail.tsx    # Word details
-│   ├── grammar-detail.tsx # Grammar details
-│   ├── quiz-setup.tsx     # Quiz configuration
-│   ├── quiz.tsx           # Quiz screen
-│   ├── quiz-result.tsx    # Results screen
-│   └── review-mistakes.tsx # Mistake review
-├── context/               # React Context (App state)
-├── storage/               # AsyncStorage functions
-├── types/                 # TypeScript types
-├── utils/                 # Utility functions (quiz logic)
-├── constants/             # Theme and styling
-└── package.json
+npx expo start --clear
 
-```
+Follow the Expo CLI instructions to open the app in a supported development environment.
 
-## Key Technologies
+📦 Android Build
 
-- **React Native** - Cross-platform mobile framework
-- **Expo** - Development platform
-- **TypeScript** - Type safety
-- **Expo Router** - File-based routing
-- **AsyncStorage** - Local data persistence
-- **Expo Speech** - Text-to-speech
-- **Expo Haptics** - Touch feedback
+Lexo uses EAS Build for Android packaging.
 
-## Demo Data
+To create an APK using the configured preview profile:
 
-The app includes demo Japanese content to showcase functionality. All demo content can be edited or deleted, and users can add content in any language.
+npx eas-cli build --platform android --profile preview
 
-## Architecture Highlights
+The build profile must be configured for APK output.
 
-- **Language-independent**: No hard-coded language logic
-- **Modular data layer**: Ready for backend integration
-- **Type-safe**: Full TypeScript coverage
-- **Persistent**: Data survives app restarts
-- **Scalable**: Clean component structure
+🗺️ Project Direction
 
-## License
+Lexo aims to become a mobile-friendly alternative to traditional flashcard apps, combining spaced-repetition review with flexible quizzes and a straightforward content library.
 
-MIT
+Potential areas of future development include:
+
+- More flexible quiz configuration
+- Dedicated spaced-repetition scheduling
+- Targeted practice for incorrect answers
+- Improved learning analytics
+- Import and export capabilities
+- Reliable synchronization and backups
+
+These are roadmap goals and should not be considered implemented unless verified in the current codebase.
+
+🤝 Contributing
+
+Lexo is under active development. Changes should preserve existing learning data, navigation, quiz behavior, and language-specific content.
+
+📄 License
+
+No license has been specified yet. All rights remain with the respective copyright holder unless a license is added to this repository.
